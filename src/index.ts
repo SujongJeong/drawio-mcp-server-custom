@@ -339,13 +339,13 @@ async function main() {
   await start_browser_extension_server();
   log.debug(`✅ Browser Extension server started (port ${PORT})`);
 
-  // Start FastMCP server with HTTP streaming (SSE compatible, stateless mode)
+  // Start FastMCP server with HTTP streaming (SSE compatible, stateful mode)
   await server.start({
     transportType: "httpStream",
     httpStream: {
       port: MCP_PORT,
       endpoint: "/",
-      stateless: true,  // Stateless mode for simpler connections
+      stateless: false,  // Stateful mode with session support
     },
   });
 
