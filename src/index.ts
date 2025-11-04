@@ -5,11 +5,7 @@ import EventEmitter from "node:events";
 import http from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
 
-import {
-  bus_reply_stream,
-  bus_request_stream,
-  Context,
-} from "./types.js";
+import { bus_reply_stream, bus_request_stream, Context } from "./types.js";
 import { create_bus } from "./emitter_bus.js";
 import { default_tool } from "./tool.js";
 import { nanoid_id_generator } from "./nanoid_id_generator.js";
@@ -50,21 +46,26 @@ function adaptTool(name: string) {
 // Register all Draw.io tools
 server.addTool({
   name: "get-selected-cell",
-  description: "Retrieve selected cell (vertex or edge) on the current page of a Draw.io diagram",
+  description:
+    "Retrieve selected cell (vertex or edge) on the current page of a Draw.io diagram",
   parameters: z.object({}),
   execute: adaptTool("get-selected-cell"),
 });
 
 server.addTool({
   name: "add-rectangle",
-  description: "Add new Rectangle vertex cell on the current page of a Draw.io diagram",
+  description:
+    "Add new Rectangle vertex cell on the current page of a Draw.io diagram",
   parameters: z.object({
     x: z.number().default(100).describe("X-axis position"),
     y: z.number().default(100).describe("Y-axis position"),
     width: z.number().default(200).describe("Width"),
     height: z.number().default(100).describe("Height"),
     text: z.string().default("New Cell").describe("Text content"),
-    style: z.string().default("whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;").describe("Draw.io visual styles"),
+    style: z
+      .string()
+      .default("whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;")
+      .describe("Draw.io visual styles"),
   }),
   execute: adaptTool("add-rectangle"),
 });
@@ -76,7 +77,12 @@ server.addTool({
     source_id: z.string().describe("Source cell ID"),
     target_id: z.string().describe("Target cell ID"),
     text: z.string().optional().describe("Text content"),
-    style: z.string().default("edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;").describe("Edge visual styles"),
+    style: z
+      .string()
+      .default(
+        "edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;",
+      )
+      .describe("Edge visual styles"),
   }),
   execute: adaptTool("add-edge"),
 });
@@ -132,7 +138,8 @@ server.addTool({
 
 server.addTool({
   name: "set-cell-shape",
-  description: "Update visual style of existing vertex cell to match a library shape",
+  description:
+    "Update visual style of existing vertex cell to match a library shape",
   parameters: z.object({
     cell_id: z.string().describe("Cell ID"),
     shape_name: z.string().describe("Shape name"),
@@ -146,7 +153,9 @@ server.addTool({
   parameters: z.object({
     cell_id: z.string().describe("Cell ID"),
     key: z.string().describe("Attribute name"),
-    value: z.union([z.string(), z.number(), z.boolean()]).describe("Attribute value"),
+    value: z
+      .union([z.string(), z.number(), z.boolean()])
+      .describe("Attribute value"),
   }),
   execute: adaptTool("set-cell-data"),
 });
@@ -185,10 +194,15 @@ server.addTool({
   parameters: z.object({
     page: z.number().default(0).describe("Page number"),
     page_size: z.number().default(50).describe("Page size"),
-    filter: z.object({
-      cell_type: z.enum(["edge", "vertex", "object", "layer", "group"]).optional(),
-      attributes: z.array(z.any()).optional(),
-    }).optional().describe("Filter criteria"),
+    filter: z
+      .object({
+        cell_type: z
+          .enum(["edge", "vertex", "object", "layer", "group"])
+          .optional(),
+        attributes: z.array(z.any()).optional(),
+      })
+      .optional()
+      .describe("Filter criteria"),
   }),
   execute: adaptTool("list-paged-model"),
 });
@@ -196,9 +210,11 @@ server.addTool({
 // Browser extension forwarder (SSE + WebSocket)
 const bus_to_clients_forwarder_listener = (event: any) => {
   const totalClients = sseClients.length + wsClients.length;
-  log.debug(`[bridge] forwarding to #${totalClients} clients (${sseClients.length} SSE, ${wsClients.length} WS)`);
+  log.debug(
+    `[bridge] forwarding to #${totalClients} clients (${sseClients.length} SSE, ${wsClients.length} WS)`,
+  );
   const data = JSON.stringify(event);
-  
+
   // Forward to SSE clients
   for (let i = sseClients.length - 1; i >= 0; i--) {
     try {
@@ -212,7 +228,7 @@ const bus_to_clients_forwarder_listener = (event: any) => {
       sseClients.splice(i, 1);
     }
   }
-  
+
   // Forward to WebSocket clients
   for (let i = wsClients.length - 1; i >= 0; i--) {
     try {
@@ -292,14 +308,14 @@ async function start_browser_extension_server() {
   return new Promise<http.Server>((resolve) => {
     httpServer.listen(PORT, () => {
       log.debug(`[browser_server] HTTP server listening on port ${PORT}`);
-      
+
       // Attach WebSocket server
       const wss = new WebSocketServer({ server: httpServer });
-      
+
       wss.on("connection", (ws: WebSocket) => {
         log.debug(`[browser_ws] Client #${wsClients.length} connected`);
         wsClients.push(ws);
-        
+
         // Handle incoming messages from browser extension
         ws.on("message", (data: Buffer) => {
           try {
@@ -310,21 +326,23 @@ async function start_browser_extension_server() {
             log.debug(`[browser_ws] Invalid JSON: ${e}`);
           }
         });
-        
+
         // Handle disconnection
         ws.on("close", () => {
           const index = wsClients.indexOf(ws);
           if (index !== -1) {
             wsClients.splice(index, 1);
           }
-          log.debug(`[browser_ws] Client disconnected, ${wsClients.length} remaining`);
+          log.debug(
+            `[browser_ws] Client disconnected, ${wsClients.length} remaining`,
+          );
         });
-        
+
         ws.on("error", (err) => {
           log.debug(`[browser_ws] Error: ${err.message}`);
         });
       });
-      
+
       log.debug(`[browser_server] WebSocket server ready`);
       resolve(httpServer);
     });
@@ -345,7 +363,7 @@ async function main() {
     httpStream: {
       port: MCP_PORT,
       endpoint: "/",
-      stateless: false,  // Stateful mode with session support
+      stateless: false, // Stateful mode with session support
     },
   });
 
